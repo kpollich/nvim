@@ -268,7 +268,7 @@ vim.keymap.set("n", "<leader>fg", function()
   })
 end, { desc = "Live grep" })
 vim.keymap.set("n", "<leader>fb", function() MiniPick.builtin.buffers() end, { desc = "Buffers" })
-vim.keymap.set("n", "<leader>fo", function() MiniPick.builtin.oldfiles() end, { desc = "Recent files" })
+vim.keymap.set("n", "<leader>fo", function() require("mini.extra").pickers.oldfiles() end, { desc = "Recent files" })
 
 -- mini.files
 vim.keymap.set("n", "<leader>e", function()
