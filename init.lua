@@ -27,10 +27,24 @@ require("lazy").setup({
     "catppuccin/nvim",
     name = "catppuccin",
     priority = 1000,
-    opts = { flavour = "macchiato" },
-    config = function(_, opts)
-      require("catppuccin").setup(opts)
-      vim.cmd.colorscheme("catppuccin")
+    config = function()
+      local current
+      local function apply_theme()
+        local handle = io.popen("defaults read -g AppleInterfaceStyle 2>/dev/null")
+        local is_dark = false
+        if handle then
+          is_dark = handle:read("*a"):match("Dark") ~= nil
+          handle:close()
+        end
+        if is_dark == current then return end
+        current = is_dark
+        vim.o.background = is_dark and "dark" or "light"
+        require("catppuccin").setup({ flavour = is_dark and "frappe" or "latte" })
+        vim.cmd.colorscheme("catppuccin")
+      end
+      apply_theme()
+      local timer = vim.uv.new_timer()
+      timer:start(500, 500, vim.schedule_wrap(apply_theme))
     end,
   },
 
@@ -61,7 +75,46 @@ require("lazy").setup({
       require("mini.statusline").setup({ use_icons = false })
       require("mini.surround").setup()
       require("mini.pairs").setup()
+      require("mini.comment").setup()
+      require("mini.ai").setup()
+      require("mini.git").setup()
+      require("mini.clue").setup({
+        triggers = {
+          { mode = "n", keys = "<leader>" },
+          { mode = "x", keys = "<leader>" },
+          { mode = "n", keys = "g" },
+          { mode = "n", keys = "z" },
+        },
+        clues = {
+          require("mini.clue").gen_clues.g(),
+          require("mini.clue").gen_clues.z(),
+        },
+        window = { delay = 300 },
+      })
     end,
+  },
+
+  -- Markdown rendering
+  {
+    "MeanderingProgrammer/render-markdown.nvim",
+    ft = { "markdown", "mdx" },
+    opts = {
+      heading = { enabled = true },
+      code = { enabled = true },
+      bullet = { enabled = true },
+      checkbox = { enabled = true },
+      table = { enabled = true },
+    },
+  },
+
+  -- Zen mode
+  {
+    "folke/zen-mode.nvim",
+    cmd = "ZenMode",
+    opts = {
+      window = { width = 90 },
+      plugins = { options = { laststatus = 0 } },
+    },
   },
 
   -- Completion
@@ -69,7 +122,7 @@ require("lazy").setup({
     "saghen/blink.cmp",
     version = "1.*",
     opts = {
-      keymap = { preset = "default" },
+      keymap = { preset = "super-tab" },
       completion = {
         documentation = { auto_show = true },
       },
@@ -105,6 +158,7 @@ vim.opt.scrolloff = 8
 vim.opt.tabstop = 2
 vim.opt.shiftwidth = 2
 vim.opt.expandtab = true
+vim.opt.undofile = true
 
 -- Filetype overrides
 vim.api.nvim_create_autocmd("FileType", {
@@ -129,7 +183,9 @@ vim.api.nvim_create_autocmd("FileType", {
   callback = function()
     vim.opt_local.wrap = true
     vim.opt_local.linebreak = true
-    vim.opt_local.conceallevel = 0
+    vim.opt_local.conceallevel = 2
+    vim.opt_local.spell = true
+    vim.opt_local.spelllang = "en_us"
   end,
 })
 
@@ -171,7 +227,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
 -- mini.pick (wrapped in functions to defer MiniPick resolution)
 vim.keymap.set("n", "<leader>ff", function()
   MiniPick.builtin.cli({
-    command = { "rg", "--files", "--hidden", "--no-ignore", "--color=never" },
+    command = { "rg", "--files", "--hidden", "--no-ignore", "--glob=!.git", "--color=never" },
   }, { source = { name = "Files (rg)" } })
 end, { desc = "Find files" })
 vim.keymap.set("n", "<leader>fg", function()
@@ -190,7 +246,7 @@ vim.keymap.set("n", "<leader>fg", function()
     end
     set_items_opts.querytick = tick
     local cmd = {
-      "rg", "--hidden", "--no-ignore",
+      "rg", "--hidden", "--no-ignore", "--glob=!.git",
       "--column", "--line-number", "--no-heading",
       "--field-match-separator", "\\x00", "--color=never",
     }
@@ -212,6 +268,7 @@ vim.keymap.set("n", "<leader>fg", function()
   })
 end, { desc = "Live grep" })
 vim.keymap.set("n", "<leader>fb", function() MiniPick.builtin.buffers() end, { desc = "Buffers" })
+vim.keymap.set("n", "<leader>fo", function() MiniPick.builtin.oldfiles() end, { desc = "Recent files" })
 
 -- mini.files
 vim.keymap.set("n", "<leader>e", function()
@@ -247,3 +304,6 @@ vim.keymap.set("n", "<leader>q", "<cmd>q<cr>", { desc = "Quit" })
 
 -- Diagnostics
 vim.keymap.set("n", "<leader>d", vim.diagnostic.open_float, { desc = "Diagnostic float" })
+
+-- Zen mode
+vim.keymap.set("n", "<leader>z", "<cmd>ZenMode<cr>", { desc = "Zen mode" })
